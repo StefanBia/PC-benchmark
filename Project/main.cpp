@@ -19,6 +19,8 @@
 #include <cstdlib>
 #include <iostream>
 
+std::ostringstream results;
+
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
@@ -32,17 +34,19 @@ std::string exec(const char* cmd) {
     return result;
 }
 
-void measure_data_transfer_speeds(){
+std::string measure_data_transfer_speeds(){
 
     clock_t start, end;
     double cpu_time_used;
+
+
 
     int fd = open("../test-files/file1kb.txt", O_RDONLY);
     char read_char = 'a';
 
     if (fd < 0) {
         perror("Error opening file");
-        return;
+        return nullptr;
     }
 
     start = clock();
@@ -54,7 +58,8 @@ void measure_data_transfer_speeds(){
 
     double mbps = (1024.0 / 1048576.0) / cpu_time_used;
 
-    std::cout<<cpu_time_used<<"s, "<<mbps<<" MB/s Read Speed for 1KB file"<<std::endl;
+
+    results << cpu_time_used<<"s, "<<mbps<<" MB/s Read Speed for 1KB file"<<std::endl;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     ///512KB
@@ -63,7 +68,7 @@ void measure_data_transfer_speeds(){
 
     if (fd < 0) {
         perror("Error opening file");
-        return;
+        return nullptr;
     }
 
     start = clock();
@@ -73,7 +78,7 @@ void measure_data_transfer_speeds(){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     mbps = (524288.0 / 1048576.0) / cpu_time_used;
-    std::cout<<cpu_time_used<<"s, "<<mbps<<" MB/s Read Speed for 512KB file"<<std::endl;
+    results<<cpu_time_used<<"s, "<<mbps<<" MB/s Read Speed for 512KB file"<<std::endl;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     ///1MB file
@@ -82,7 +87,7 @@ void measure_data_transfer_speeds(){
 
     if (fd < 0) {
         perror("Error opening file");
-        return;
+        return nullptr;
     }
 
     start = clock();
@@ -92,7 +97,7 @@ void measure_data_transfer_speeds(){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     mbps = 1 / cpu_time_used;
-    std::cout<<cpu_time_used<<"s, "<<mbps<<" MB/s Read Speed for 1MB file"<<std::endl;
+    results<<cpu_time_used<<"s, "<<mbps<<" MB/s Read Speed for 1MB file"<<std::endl;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     ///5MB file
@@ -101,7 +106,7 @@ void measure_data_transfer_speeds(){
 
     if (fd < 0) {
         perror("Error opening file");
-        return;
+        return nullptr;
     }
 
     start = clock();
@@ -111,7 +116,27 @@ void measure_data_transfer_speeds(){
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     mbps = 5 / cpu_time_used;
-    std::cout<<cpu_time_used<<"s, "<<mbps<<" MB/s Read Speed for 5MB file"<<std::endl;
+    results<<cpu_time_used<<"s, "<<mbps<<" MB/s Read Speed for 5MB file"<<std::endl;
+    std::string finalString = results.str();
+    return finalString;
+}
+
+void startDataThread(){
+    pthread_t tid;
+    if (pthread_create(&tid, nullptr, [](void*) -> void* {
+        measure_data_transfer_speeds();
+    }, nullptr) != 0) {
+        perror("Error creating thread");
+        exit(1);
+    }
+
+    if (pthread_join(tid, nullptr) != 0) {
+        perror("Error joining thread");
+        exit(1);
+    }
+
+    std::cout<<results.str();
+
 }
 
 // GLFW error callback
@@ -171,7 +196,7 @@ int main() {
         ImGui::Text("%s", totalRAM.c_str());
 
         if (ImGui::Button("Measure Data Transfer Speed")) {
-            measure_data_transfer_speeds();  // Call the function when button is pressed
+            startDataThread();
         }
 
         ImGui::End();
